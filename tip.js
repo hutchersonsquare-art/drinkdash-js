@@ -20,6 +20,32 @@ document.addEventListener('DOMContentLoaded', function () {
     var tipCell = document.querySelector('.tip-amount');           
     var totalCell = document.querySelector('.total-amount');       
 
+
+ // --- NEW: update Driver Tip product line dynamically ---
+    function updateTipLine(tipValue) {
+      var productId = DRIVER_TIP_PRODUCT_ID; // replace with your Driver Tip product_id
+
+      if (tipValue > 0) {
+        $.post('/shop/cart/update_json', {
+          product_id: productId,
+          add_qty: 1,
+          set_qty: 1
+        }).then(function () {
+          // ensure the backend recalculates
+          location.reload();
+        });
+      } else {
+        $.post('/shop/cart/update_json', {
+          product_id: productId,
+          set_qty: 0
+        }).then(function () {
+          location.reload();
+        });
+      }
+    }
+
+
+    
     function getValue(el) {
       if (!el) return 0.0;
       var v = el.getAttribute('data-value') || el.textContent || el.innerText;
