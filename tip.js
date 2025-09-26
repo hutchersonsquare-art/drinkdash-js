@@ -9,9 +9,9 @@ document.addEventListener('DOMContentLoaded', function () {
       return '$' + Number(v || 0).toFixed(2);
     }
 
-    // Selectors - adjust to your Odoo template if needed
-    var tipButtons = document.querySelectorAll('.o_tip_button');        // % / fixed tip buttons
-    var customInput = document.querySelector('input.tip-custom');  // custom input
+    // Selectors
+    var tipButtons = document.querySelectorAll('.o_tip_button');        
+    var customInput = document.querySelector('input.tip-custom');  
     var hiddenTipField = document.querySelector('input[name="x_tip_amount"]');
 
     var deliveryCell = document.querySelector('.delivery-amount'); 
@@ -41,6 +41,12 @@ document.addEventListener('DOMContentLoaded', function () {
       if (hiddenTipField) hiddenTipField.value = tipValue.toFixed(2);
     }
 
+    // Helper: highlight active button
+    function setActiveButton(btn) {
+      tipButtons.forEach(function (b) { b.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
+    }
+
     // Tip button clicks
     tipButtons.forEach(function (btn) {
       btn.addEventListener('click', function (e) {
@@ -59,6 +65,8 @@ document.addEventListener('DOMContentLoaded', function () {
           tipValue = (subtotal + delivery) * pctNum / 100;
         }
         recomputeAndRender(tipValue);
+        setActiveButton(btn);  // highlight the selected button
+        if (customInput) customInput.value = ''; // clear custom input if button clicked
       });
     });
 
@@ -67,6 +75,7 @@ document.addEventListener('DOMContentLoaded', function () {
       customInput.addEventListener('input', function () {
         var val = parseMoney(customInput.value);
         recomputeAndRender(val);
+        setActiveButton(null); // clear highlights when typing custom amount
       });
       customInput.addEventListener('blur', function () {
         var v = parseMoney(customInput.value);
@@ -74,8 +83,14 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }
 
-    // Initial render (if hidden field already has a tip)
+    // Initial render
     var initialTip = hiddenTipField ? parseFloat(hiddenTipField.value || 0) : 0;
     recomputeAndRender(initialTip);
+
+    // Default selection: 10%
+    var defaultBtn = document.querySelector('.o_tip_button[data-percent="10"]');
+    if (defaultBtn && initialTip === 0) {
+      defaultBtn.click();
+    }
   })();
 });
