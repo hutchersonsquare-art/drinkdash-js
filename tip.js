@@ -47,8 +47,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function setActiveButton(btn) {
       clearButtonStates();
-      btn.classList.add('active');
-      if (customInput) customInput.value = ''; // clear custom when % clicked
+      if (btn) btn.classList.add('active');
+      if (customInput) customInput.value = ''; // clear custom field
     }
 
     // Tip button clicks
@@ -93,12 +93,16 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }
 
-    // Initial render — default 10%
+    // ---- Default 10% ----
     var initialTip = hiddenTipField ? parseFloat(hiddenTipField.value || 0) : 0;
     if (!initialTip) {
       var defaultBtn = document.querySelector('.o_tip_button[data-percent="10"]');
       if (defaultBtn) {
-        defaultBtn.click(); // auto-apply 10%
+        var subtotal = getValue(subtotalCell);
+        var delivery = getValue(deliveryCell);
+        var tipValue = (subtotal + delivery) * 0.10;
+        recomputeAndRender(tipValue);
+        setActiveButton(defaultBtn);
       }
     } else {
       recomputeAndRender(initialTip);
