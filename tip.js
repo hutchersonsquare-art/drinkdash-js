@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- NEW: update Driver Tip product line dynamically ---
     function updateTipLine(tipValue) {
-      var productId = __export__.product_template_4651_71da17c0; // replace with your Driver Tip product_id
+      var productId = 4651; // replace with your Driver Tip product_id
 
       if (tipValue > 0) {
         $.post('/shop/cart/update_json', {
