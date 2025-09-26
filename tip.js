@@ -9,9 +9,9 @@ document.addEventListener('DOMContentLoaded', function () {
       return '$' + Number(v || 0).toFixed(2);
     }
 
-    // Selectors
-    var tipButtons = document.querySelectorAll('.o_tip_button');
-    var customInput = document.querySelector('input.tip-custom');
+    // Selectors - adjust to your Odoo template if needed
+    var tipButtons = document.querySelectorAll('.o_tip_button');        // % / fixed tip buttons
+    var customInput = document.querySelector('input.tip-custom');  // custom input
     var hiddenTipField = document.querySelector('input[name="x_tip_amount"]');
 
     var deliveryCell = document.querySelector('.delivery-amount'); 
@@ -19,29 +19,6 @@ document.addEventListener('DOMContentLoaded', function () {
     var taxesCell = document.querySelector('.taxes-amount');       
     var tipCell = document.querySelector('.tip-amount');           
     var totalCell = document.querySelector('.total-amount');       
-
-    // --- NEW: update Driver Tip product line dynamically ---
-    function updateTipLine(tipValue) {
-      var productId = 4651; // replace with your Driver Tip product_id
-
-      if (tipValue > 0) {
-        $.post('/shop/cart/update_json', {
-          product_id: productId,
-          add_qty: 1,
-          set_qty: 1
-        }).then(function () {
-          // ensure the backend recalculates
-          location.reload();
-        });
-      } else {
-        $.post('/shop/cart/update_json', {
-          product_id: productId,
-          set_qty: 0
-        }).then(function () {
-          location.reload();
-        });
-      }
-    }
 
     function getValue(el) {
       if (!el) return 0.0;
@@ -62,9 +39,6 @@ document.addEventListener('DOMContentLoaded', function () {
       if (totalCell) totalCell.textContent = formatMoney(newTotal);
 
       if (hiddenTipField) hiddenTipField.value = tipValue.toFixed(2);
-
-      // NEW: also sync to backend as product line
-      updateTipLine(tipValue);
     }
 
     // Tip button clicks
@@ -100,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }
 
-    // Initial render
+    // Initial render (if hidden field already has a tip)
     var initialTip = hiddenTipField ? parseFloat(hiddenTipField.value || 0) : 0;
     recomputeAndRender(initialTip);
   })();
