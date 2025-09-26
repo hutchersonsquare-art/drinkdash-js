@@ -9,9 +9,9 @@ document.addEventListener('DOMContentLoaded', function () {
       return '$' + Number(v || 0).toFixed(2);
     }
 
-    // Selectors - adjust to your Odoo template if needed
-    var tipButtons = document.querySelectorAll('.o_tip_button');        // % / fixed tip buttons
-    var customInput = document.querySelector('input.tip-custom');  // custom input
+    // Selectors
+    var tipButtons = document.querySelectorAll('.o_tip_button');
+    var customInput = document.querySelector('input.tip-custom');
     var hiddenTipField = document.querySelector('input[name="x_tip_amount"]');
 
     var deliveryCell = document.querySelector('.delivery-amount'); 
@@ -20,8 +20,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var tipCell = document.querySelector('.tip-amount');           
     var totalCell = document.querySelector('.total-amount');       
 
-
- // --- NEW: update Driver Tip product line dynamically ---
+    // --- NEW: update Driver Tip product line dynamically ---
     function updateTipLine(tipValue) {
       var productId = DRIVER_TIP_PRODUCT_ID; // replace with your Driver Tip product_id
 
@@ -44,8 +43,6 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
 
-
-    
     function getValue(el) {
       if (!el) return 0.0;
       var v = el.getAttribute('data-value') || el.textContent || el.innerText;
@@ -65,6 +62,9 @@ document.addEventListener('DOMContentLoaded', function () {
       if (totalCell) totalCell.textContent = formatMoney(newTotal);
 
       if (hiddenTipField) hiddenTipField.value = tipValue.toFixed(2);
+
+      // NEW: also sync to backend as product line
+      updateTipLine(tipValue);
     }
 
     // Tip button clicks
@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }
 
-    // Initial render (if hidden field already has a tip)
+    // Initial render
     var initialTip = hiddenTipField ? parseFloat(hiddenTipField.value || 0) : 0;
     recomputeAndRender(initialTip);
   })();
