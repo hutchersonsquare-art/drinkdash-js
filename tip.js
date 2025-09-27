@@ -1,81 +1,101 @@
-document.addEventListener('DOMContentLoaded', function () {
-  (function () {
-    function parseMoney(text) {
-      if (!text) return 0.0;
-      return parseFloat(String(text).replace(/[^0-9.\-]/g, '')) || 0.0;
+(function () {
+    // --- Helpers ---
+    function parseMoney(raw) {
+        if (!raw) return 0;
+        // remove everything except digits, dot, minus
+        const m = String(raw).replace(/[^0-9.\-]/g, '');
+        const v = parseFloat(m);
+        return isNaN(v) ? 0 : v;
     }
 
-    function formatMoney(v) {
-      return '$' + Number(v || 0).toFixed(2);
+    function findRowAmount(rowName) {
+        // tries both common names across Odoo versions
+        const row = document.querySelector(
+            `tr[name="${rowName}"] td.text-end, tr[name="${rowName}"] td:nth-last-child(1)`
+        );
+        return row ? parseMoney(row.textContent) : 0;
     }
 
-    // Selectors - adjust to your Odoo template if needed
-    var tipButtons = document.querySelectorAll('.o_tip_button');        // % / fixed tip buttons
-    var customInput = document.querySelector('input.tip-custom');  // custom input
-    var hiddenTipField = document.querySelector('input[name="x_tip_amount"]');
-
-    var deliveryCell = document.querySelector('.delivery-amount'); 
-    var subtotalCell = document.querySelector('.subtotal-amount'); 
-    var taxesCell = document.querySelector('.taxes-amount');       
-    var tipCell = document.querySelector('.tip-amount');           
-    var totalCell = document.querySelector('.total-amount');       
-
-    function getValue(el) {
-      if (!el) return 0.0;
-      var v = el.getAttribute('data-value') || el.textContent || el.innerText;
-      return parseMoney(v);
+    function formatMoneyLike(el, value) {
+        // Try to mimic existing currency formatting using the Total cell symbol
+        const totalCell = document.querySelector('tr[name="o_order_total"] td.text-end, tr[name="o_order_total"] td:nth-last-child(1)');
+        const sample = totalCell ? totalCell.textContent.trim() : '$0.00';
+        const hasLeading = /^[^\d\-]+/.exec(sample);
+        const hasTrailing = /[^\d.\-]+$/.exec(sample);
+        const rounded = (Math.round(value * 100) / 100).toFixed(2);
+        return `${hasLeading ? hasLeading[0] : '$'}${rounded}${hasTrailing ? hasTrailing[0] : ''}`;
     }
 
-    function recomputeAndRender(tipValue) {
-      tipValue = Number(tipValue || 0);
-
-      var subtotal = getValue(subtotalCell);
-      var delivery = getValue(deliveryCell);
-      var taxes = getValue(taxesCell);
-
-      var newTotal = subtotal + delivery + tipValue + taxes;
-
-      if (tipCell) tipCell.textContent = formatMoney(tipValue);
-      if (totalCell) totalCell.textContent = formatMoney(newTotal);
-
-      if (hiddenTipField) hiddenTipField.value = tipValue.toFixed(2);
-    }
-
-    // Tip button clicks
-    tipButtons.forEach(function (btn) {
-      btn.addEventListener('click', function (e) {
-        e.preventDefault();
-        var fixed = btn.getAttribute('data-tip');
-        var pct = btn.getAttribute('data-percent');
-
-        var subtotal = getValue(subtotalCell);
-        var delivery = getValue(deliveryCell);
-
-        var tipValue = 0;
-        if (fixed !== null) {
-          tipValue = parseFloat(fixed) || 0;
-        } else if (pct !== null) {
-          var pctNum = parseFloat(pct) || 0;
-          tipValue = (subtotal + delivery) * pctNum / 100;
+    function ensureTipRow() {
+        // If Tip row not present, insert after Delivery
+        let tipRow = document.querySelector('tr[name="o_order_tip"]');
+        if (!tipRow) {
+            const deliveryRow = document.querySelector('tr[name="o_order_delivery"]');
+            if (!deliveryRow) return null;
+            tipRow = document.createElement('tr');
+            tipRow.setAttribute('name', 'o_order_tip');
+            tipRow.innerHTML = `
+                <td class="ps-0 pt-0 pb-2 border-0 text-muted" colspan="2">Tip</td>
+                <td class="text-end pe-0 pt-0 pb-2 border-0">
+                    <span class="tip-amount">$0.00</span>
+                </td>
+            `;
+            deliveryRow.parentNode.insertBefore(tipRow, deliveryRow.nextSibling);
         }
-        recomputeAndRender(tipValue);
-      });
-    });
-
-    // Custom tip input
-    if (customInput) {
-      customInput.addEventListener('input', function () {
-        var val = parseMoney(customInput.value);
-        recomputeAndRender(val);
-      });
-      customInput.addEventListener('blur', function () {
-        var v = parseMoney(customInput.value);
-        customInput.value = v ? v.toFixed(2) : '';
-      });
+        return tipRow;
     }
 
-    // Initial render (if hidden field already has a tip)
-    var initialTip = hiddenTipField ? parseFloat(hiddenTipField.value || 0) : 0;
-    recomputeAndRender(initialTip);
-  })();
-});
+    function getBaseForPercent() {
+        // Tip base = Subtotal + Delivery (no taxes). Adjust if you prefer Subtotal only.
+        const subtotal = findRowAmount('o_order_subtotal') || findRowAmount('o_order_untaxed');
+        const delivery = findRowAmount('o_order_delivery');
+        return subtotal + delivery;
+    }
+
+    function getExistingTip() {
+        const tipSpan = document.querySelector('tr[name="o_order_tip"] .tip-amount');
+        return tipSpan ? parseMoney(tipSpan.textContent) : 0;
+    }
+
+    function setTipAmount(tip) {
+        const tipRow = ensureTipRow();
+        if (!tipRow) return;
+
+        const tipSpan = tipRow.querySelector('.tip-amount');
+        const formatted = formatMoneyLike(tipSpan, tip);
+        tipSpan.textContent = formatted;
+
+        const hidden = document.getElementById('x_tip_amount');
+        if (hidden) hidden.value = (Math.round(tip * 100) / 100).toFixed(2);
+
+        // Visually update Total = (Total - oldTip) + newTip
+        const totalCell = document.querySelector('tr[name="o_order_total"] td.text-end, tr[name="o_order_total"] td:nth-last-child(1)');
+        if (totalCell) {
+            const currentTotal = parseMoney(totalCell.textContent);
+            const oldTip = getExistingTip();
+            const newTotal = currentTotal - oldTip + tip;
+            totalCell.textContent = formatMoneyLike(totalCell, newTotal);
+        }
+    }
+
+    // --- Wire buttons and input ---
+    function onPercentClick(e) {
+        const btn = e.target.closest('.o_tip_button');
+        if (!btn) return;
+        e.preventDefault();
+        const pct = parseFloat(btn.getAttribute('data-tip') || '0') || 0;
+        const base = getBaseForPercent();
+        const tip = base * (pct / 100);
+        setTipAmount(tip);
+    }
+
+    function onCustomChange(e) {
+        const inp = e.target.closest('#tip-custom');
+        if (!inp) return;
+        const val = parseFloat(inp.value || '0') || 0;
+        setTipAmount(val);
+    }
+
+    document.addEventListener('click', onPercentClick);
+    document.addEventListener('input', onCustomChange);
+})();
